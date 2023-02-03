@@ -10,10 +10,37 @@
 // set to 0 to use the real hardware
 #define DEV 0
 
+int getPOTReading()
+{
+#if !DEV
+    FILE *f = fopen(A2D_FILE_VOLTAGE0, "r");
+    if (!f)
+    {
+        printf("ERROR: Unable to open voltage input file. Cape loaded?\n");
+        printf("       Check /boot/uEnv.txt for correct options.\n");
+        exit(-1);
+    }
+    // Get reading
+    int a2dReading = 0;
+    int itemsRead = fscanf(f, "%d", &a2dReading);
+    if (itemsRead <= 0)
+    {
+        printf("ERROR: Unable to read values from voltage input file.\n");
+        exit(-1);
+    }
+
+    // Close file
+    fclose(f);
+
+    return a2dReading;
+#else
+    return rand() % 1000;
+#endif
+}
+
 double getReading()
 {
 #if !DEV
-    // Open file
     FILE *f = fopen(A2D_FILE_VOLTAGE1, "r");
     if (!f)
     {
@@ -21,7 +48,6 @@ double getReading()
         printf("       Check /boot/uEnv.txt for correct options.\n");
         exit(-1);
     }
-
     // Get reading
     int a2dReading = 0;
     int itemsRead = fscanf(f, "%d", &a2dReading);
@@ -65,6 +91,17 @@ void *sample(void *args)
     while (samplerThreadRunning)
     {
         double reading = getReading();
+        double potReading = getPOTReading();
+
+        // Use the value read from the POT as the size of the history, except use size 1 if reading 0.
+        if (potReading == 0)
+        {
+            Sampler_setHistorySize(1);
+        }
+        else
+        {
+            Sampler_setHistorySize(potReading);
+        }
 
         // Initially set the average as the first read value
         if (samples_taken == 0)
