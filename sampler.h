@@ -5,6 +5,7 @@
 #ifndef _SAMPLER_H_
 #define _SAMPLER_H_
 
+#define A2D_FILE_VOLTAGE0 "/sys/bus/iio/devices/iio:device0/in_voltage0_raw"
 #define A2D_FILE_VOLTAGE1 "/sys/bus/iio/devices/iio:device0/in_voltage1_raw"
 #define A2D_VOLTAGE_REF_V 1.8
 #define A2D_MAX_READING 4095
@@ -39,4 +40,6 @@ double Sampler_getAverageReading(void);
 
 // Get the total number of light level samples taken so far.
 long long Sampler_getNumSamplesTaken(void);
+
+int getPOTReading();
 #endif
