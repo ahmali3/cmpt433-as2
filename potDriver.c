@@ -6,13 +6,14 @@
 #include <stdio.h>
 #include <unistd.h>
 #include "sampler.h"
+#include "i2c.h"
 
-// tester code for 1.1
+// main driver
 int main()
 {
 	Sampler_startSampling();
-	sleep(3);
-	Sampler_stopSampling();
+	// sleep(3);
+	// Sampler_stopSampling();
 	// while (true)
 	// {
 	// 	double reading = Sampler_getAverageReading();
@@ -40,12 +41,19 @@ int main()
 	// }
 
 		// Print the history of readings and the size of the history
-	int length;
-	double *history = Sampler_getHistory(&length);
-	printf("Size of history: %d\n", length);
-	for (int i = 0; i < length; i++)
-	{
-		printf("History[%d] = %f\n", i, history[i]);
-	}
-	free(history);
+// 	int length;
+// 	double *history = Sampler_getHistory(&length);
+// 	printf("Size of history: %d\n", length);
+// 	for (int i = 0; i < length; i++)
+// 	{
+// 		printf("History[%d] = %f\n", i, history[i]);
+// 	}
+// 	free(history);
+
+while(true) {
+startDisplayThread();
+}
+
+// sleep(10);
+// stopDisplayThread();
 }
