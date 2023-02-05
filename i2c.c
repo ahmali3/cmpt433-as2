@@ -39,15 +39,18 @@ void *displayDigits(void *arg)
 	int numDips = 0;
 	int leftDigit = 0;
 	int rightDigit = 0;
-	int timeElapsedInMs = 100;
+	long long timeElapsedInMs = 0;
+	long long start = getTimeInMs();
+    long long end = getTimeInMs();
 
     while (displayThreadRunning)
     {
-		// Set both pins to 0
-		modifyFile(leftDigitFile, TURN_OFF);
-		modifyFile(rightDigitFile, TURN_OFF);
-		if (timeElapsedInMs == 100)
+		end = getTimeInMs();
+		timeElapsedInMs = end - start;
+		if (timeElapsedInMs >= 100)
 		{
+			start = getTimeInMs();
+			timeElapsedInMs = 0;
 			if (Sampler_getNumSamplesInHistory() > 99)
 				numDips = 99;
 			else
@@ -55,8 +58,11 @@ void *displayDigits(void *arg)
 
 			leftDigit = numDips / 10;
 			rightDigit = numDips % 10;
-			timeElapsedInMs = 0;
 		}
+
+		// Set both pins to 0
+		modifyFile(leftDigitFile, TURN_OFF);
+		modifyFile(rightDigitFile, TURN_OFF);
 
 		// Display left digit
 		writeI2cReg(i2cFileDesc, REG_OUTA, bottomDigits[leftDigit]);
