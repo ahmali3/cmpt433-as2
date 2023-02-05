@@ -5,11 +5,11 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <stdbool.h>
+#include <string.h>
 #include "sampler.h"
 #include "i2c.h"
 #include "udp.h"
 #include "utility.h"
-
 
 bool udpThreadRunning = false;
 
@@ -18,7 +18,6 @@ int sockfd;
 struct sockaddr_in serveraddr;
 struct sockaddr_in clientaddr;
 socklen_t clientlen = sizeof(clientaddr);
-
 
 // function to set up the UDP socket
 void setupSocket(void)
@@ -59,24 +58,6 @@ void closeSocket(void)
     close(sockfd);
 }
 
-
-// Create a thread to listen for UDP packets
-void startUdpThread()
-{
-    setupSocket();
-    pthread_t tid;
-    pthread_create(&tid, NULL, udpThread, NULL);
-
-    udpThreadRunning = true;
-}
-
-// Stop the UDP thread
-void stopUdpThread()
-{
-    udpThreadRunning = false;
-    closeSocket();
-}
-
 // function to print the help message
 void printHelp(void)
 {
@@ -90,7 +71,6 @@ void printHelp(void)
     printf("<enter>         -- repeat last command.\n");
 }
 
-
 // function to print the number of samples taken
 void printCount(void)
 {
@@ -100,7 +80,7 @@ void printCount(void)
 // function to print the length of the history
 void printLength(void)
 {
-    printf("History can hold %d samples.\n", Sampler_getMaxHistorySize());
+    printf("History can hold %d samples.\n", Sampler_getHistorySize());
     printf("Currently holding %d samples.\n", Sampler_getNumSamplesInHistory());
 }
 
@@ -205,7 +185,6 @@ void handleCommand(char *command)
     }
 }
 
-
 // Thread function to listen for UDP packets. You can assume that 1,500 bytes of data will fit into a UDP packet.
 void *udpThread(void *arg)
 {
@@ -235,4 +214,21 @@ void *udpThread(void *arg)
         sendPacket(buffer);
     }
     return NULL;
+}
+
+// Create a thread to listen for UDP packets
+void startUdpThread()
+{
+    setupSocket();
+    pthread_t tid;
+    pthread_create(&tid, NULL, udpThread, NULL);
+
+    udpThreadRunning = true;
+}
+
+// Stop the UDP thread
+void stopUdpThread()
+{
+    udpThreadRunning = false;
+    closeSocket();
 }
