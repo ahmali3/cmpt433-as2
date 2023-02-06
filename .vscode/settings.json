@@ -1,6 +1,8 @@
 {
     "files.associations": {
+        "*.ejs": "html",
         "stdbool.h": "c",
-        "stdlib.h": "c"
+        "stdlib.h": "c",
+        "sampler.h": "c"
     }
 }
