@@ -44,12 +44,24 @@ void setupSocket(void)
 // function to send a UDP packet
 void sendPacket(char *buffer)
 {
-    int n = sendto(sockfd, buffer, strlen(buffer), 0, (struct sockaddr *)&clientaddr, clientlen);
+    int n = sendto(sockfd, buffer, MAX_BUFFER_SIZE, 0, (struct sockaddr *)&clientaddr, clientlen);
     if (n < 0)
     {
         perror("ERROR in sendto");
         exit(1);
     }
+}
+
+// function to receive a UDP packet
+int receivePacket(char *buffer)
+{
+    int n = recvfrom(sockfd, buffer, MAX_BUFFER_SIZE, 0, (struct sockaddr *)&clientaddr, &clientlen);
+    if (n < 0)
+    {
+        perror("ERROR in recvfrom");
+        exit(1);
+    }
+    return n;
 }
 
 // function to close the UDP socket
@@ -149,11 +161,11 @@ void stop(void)
 // function to handle which function to call based on the command
 void handleCommand(char *command)
 {
-    if (strcmp(command, "help"))
-    {
-        printHelp();
-    }
-    else if (strcmp(command, "count"))
+    // if (strcmp(command, "help"))
+    // {
+    //     printHelp();
+    // }
+    if (strcmp(command, "count"))
     {
         printCount();
     }
@@ -181,25 +193,22 @@ void handleCommand(char *command)
     }
     else
     {
-        printHelp();
+        printf("Error: command '%s' not recognized.\n", command);
+        printf("testing...");
+        //printHelp();
     }
 }
 
 // Thread function to listen for UDP packets. You can assume that 1,500 bytes of data will fit into a UDP packet.
 void *udpThread(void *arg)
 {
-    char buffer[MAX_BUFFER_SIZE];
-    char lastCommand[MAX_BUFFER_SIZE];
-    int n;
+    char buffer[MAX_BUFFER_SIZE] = "";
+    char lastCommand[MAX_BUFFER_SIZE] = "";
+    int n = 0;
 
     while (udpThreadRunning)
     {
-        n = recvfrom(sockfd, buffer, MAX_BUFFER_SIZE, 0, (struct sockaddr *)&clientaddr, &clientlen);
-        if (n < 0)
-        {
-            perror("ERROR in recvfrom");
-            exit(1);
-        }
+        n = receivePacket(buffer);
         buffer[n] = '\0';
 
         if (strcmp(buffer, ""))
@@ -211,7 +220,7 @@ void *udpThread(void *arg)
             strcpy(lastCommand, buffer);
         }
         handleCommand(buffer);
-        sendPacket(buffer);
+       // sendPacket(buffer);
     }
     return NULL;
 }
@@ -219,6 +228,10 @@ void *udpThread(void *arg)
 // Create a thread to listen for UDP packets
 void startUdpThread()
 {
+    if (udpThreadRunning)
+    {
+        return;
+    }
     setupSocket();
     pthread_t tid;
     pthread_create(&tid, NULL, udpThread, NULL);
