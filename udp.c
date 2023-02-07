@@ -13,205 +13,247 @@
 
 bool udpThreadRunning = false;
 
-// socket variables
-int sockfd;
+// Socket variables
+int sock;
 struct sockaddr_in serveraddr;
 struct sockaddr_in clientaddr;
 socklen_t clientlen = sizeof(clientaddr);
 
-// function to set up the UDP socket
-void setupSocket(void)
+// Idea from https://stackoverflow.com/questions/68456477/passing-multiple-buffers-with-iovec-in-c-linux-sockets
+
+// Sends a message through the UDP socket.
+void sendMessage(char *message)
 {
-    // create a socket
-    sockfd = socket(AF_INET, SOCK_DGRAM, 0);
-    if (sockfd < 0)
+    struct iovec iov[1];
+    struct msghdr msg;
+    memset(&msg, 0, sizeof(msg));
+    iov[0].iov_base = message;
+    iov[0].iov_len = strlen(message);
+    msg.msg_iov = iov;
+    msg.msg_iovlen = 1;
+    msg.msg_name = &clientaddr;
+    msg.msg_namelen = sizeof(clientaddr);
+    sendmsg(sock, &msg, 0);
+}
+
+void setupUdpSocket(void)
+{
+    // Creates a socket
+    sock = socket(AF_INET, SOCK_DGRAM, 0);
+    if (sock < 0)
     {
-        perror("ERROR opening socket");
+        perror("Failed to open socket.\n\n");
         exit(1);
     }
 
-    // bind the socket to an address
+    // Binds the socket to an address
     serveraddr.sin_family = AF_INET;
     serveraddr.sin_addr.s_addr = INADDR_ANY;
     serveraddr.sin_port = htons(PORT);
-    if (bind(sockfd, (struct sockaddr *)&serveraddr, sizeof(serveraddr)) < 0)
+    if (bind(sock, (const struct sockaddr *)&serveraddr, sizeof(serveraddr)) < 0)
     {
-        perror("ERROR on binding");
+        perror("Binding failed.\n\n");
         exit(1);
     }
 }
 
-// function to send a UDP packet
-void sendPacket(char *buffer)
-{
-    int n = sendto(sockfd, buffer, MAX_BUFFER_SIZE, 0, (struct sockaddr *)&clientaddr, clientlen);
-    if (n < 0)
-    {
-        perror("ERROR in sendto");
-        exit(1);
-    }
-}
-
-// function to receive a UDP packet
+// Receives a UDP packet
 int receivePacket(char *buffer)
 {
-    int n = recvfrom(sockfd, buffer, MAX_BUFFER_SIZE, 0, (struct sockaddr *)&clientaddr, &clientlen);
+    int n = recvfrom(sock, buffer, MAX_BUFFER_SIZE, 0, (struct sockaddr *)&clientaddr, &clientlen);
     if (n < 0)
     {
-        perror("ERROR in recvfrom");
+        perror("Failed to receive packet.\n\n");
         exit(1);
     }
     return n;
 }
 
-// function to close the UDP socket
+// Closes the UDP socket
 void closeSocket(void)
 {
-    close(sockfd);
+    close(sock);
 }
 
-// function to print the help message
+// Prints the help message
 void printHelp(void)
 {
-    printf("Accepted command examples:\n");
-    printf("count           -- display total number of samples taken.\n");
-    printf("length          -- display number of samples in history (both max, and current).\n");
-    printf("history         -- display the full sample history being saved.\n");
-    printf("get 10          -- display the 10 most recent history values.\n");
-    printf("dips            -- display number of dips.\n");
-    printf("stop            -- cause the server program to end.\n");
-    printf("<enter>         -- repeat last command.\n");
+    char buffer[MAX_BUFFER_SIZE];
+    sprintf(buffer, "Accepted command examples:\n");
+    sendMessage(buffer);
+    sprintf(buffer, "count           -- display total number of samples taken.\n");
+    sendMessage(buffer);
+    sprintf(buffer, "length          -- display number of samples in history (both max, and current).\n");
+    sendMessage(buffer);
+    sprintf(buffer, "history         -- display the full sample history being saved.\n");
+    sendMessage(buffer);
+    sprintf(buffer, "get 10          -- display the 10 most recent history values.\n");
+    sendMessage(buffer);
+    sprintf(buffer, "dips            -- display number of dips.\n");
+    sendMessage(buffer);
+    sprintf(buffer, "stop            -- cause the server program to end.\n");
+    sendMessage(buffer);
+    sprintf(buffer, "<enter>         -- repeat last command.\n\n");
+    sendMessage(buffer);
 }
 
-// function to print the number of samples taken
+// Prints the number of samples taken by the sampler
 void printCount(void)
 {
-    printf("Number of samples taken = %d.", Sampler_getNumSamplesInHistory());
+    char buffer[MAX_BUFFER_SIZE];
+    sprintf(buffer, "Number of samples taken = %d.\n\n", Sampler_getNumSamplesInHistory());
+    sendMessage(buffer);
 }
 
-// function to print the length of the history
+
+// Prints the length of the sampler history
 void printLength(void)
 {
-    printf("History can hold %d samples.\n", Sampler_getHistorySize());
-    printf("Currently holding %d samples.\n", Sampler_getNumSamplesInHistory());
+    char buffer[MAX_BUFFER_SIZE];
+    sprintf(buffer, "History can hold %d samples.\n", Sampler_getHistorySize());
+    sendMessage(buffer);
+    sprintf(buffer, "Currently holding %d samples.\n\n", Sampler_getNumSamplesInHistory());
+    sendMessage(buffer);
 }
 
-// function to print the history
+// Prints the entire history.
 void printHistory(void)
 {
     int i;
     int numSamples;
     double *history = Sampler_getHistory(&numSamples);
+    char buffer[MAX_BUFFER_SIZE];
+
     for (i = 0; i < numSamples; i++)
     {
-        printf("%.3f", history[i]);
+        sprintf(buffer, "%.3f", history[i]);
+        sendMessage(buffer);
         if (i < numSamples - 1)
         {
-            printf(", ");
+            sprintf(buffer, ", ");
+            sendMessage(buffer);
         }
         if ((i + 1) % 20 == 0)
         {
-            printf("\n");
+            sprintf(buffer, "\n");
+            sendMessage(buffer);
         }
     }
+    sprintf(buffer, "\n\n");
+    sendMessage(buffer);
 }
 
-// function to print the most recent N samples
+// Prints the most recent N samples in the history.
 void printGetN(int n)
 {
     int i;
     int numSamples;
     double *history = Sampler_getHistory(&numSamples);
+    char buffer[MAX_BUFFER_SIZE];
+
     if (n > numSamples)
     {
-        printf("Error: N is greater than the number of samples currently in the history.\n");
-        printf("Valid range of N is 1 to %d.\n", numSamples);
+        sprintf(buffer, "Error: N is greater than the number of samples currently in the history.\n");
+        sendMessage(buffer);
+        sprintf(buffer, "Valid range of N is 1 to %d.\n\n", numSamples);
+        sendMessage(buffer);
     }
     else
     {
         for (i = numSamples - n; i < numSamples; i++)
         {
-            printf("%.3f", history[i]);
+            sprintf(buffer, "%.3f", history[i]);
+            sendMessage(buffer);
             if (i < numSamples - 1)
             {
-                printf(", ");
+                sprintf(buffer, ", ");
+                sendMessage(buffer);
             }
-            if ((i + 1) % 20 == 0)
+            if ((i - numSamples + n + 1) % 20 == 0)
             {
-                printf("\n");
+                sprintf(buffer, "\n");
+                sendMessage(buffer);
             }
         }
     }
+    sprintf(buffer, "\n\n");
+    sendMessage(buffer);
 }
 
 // function to print the number of dips
 // void printDips(void)
 // {
-//     printf("# Dips = %d.\n", Sampler_getNumDips());
+//     char buffer[MAX_BUFFER_SIZE];
+//     sprintf(buffer, "# Dips = %d.\n\n", Sampler_getNumDips());
+//     // send the char to the client
+//     sendMessage(buffer);
 // }
 
-// function to stop the program. Closes all threads and sockets and exits.
+// Closes all threads and sockets and exits.
 void stop(void)
 {
-    printf("Program terminating.\n");
+    char buffer[MAX_BUFFER_SIZE];
+    sprintf(buffer, "Stopping program.\n\n");
+    sendMessage(buffer);
+    printf("Stopping program.\n\n");
+
     stopUdpThread();
     exit(0);
 }
 
-// function to handle which function to call based on the command
+// Handles which print function to call based on the received command.
 void handleCommand(char *command)
 {
-    // if (strcmp(command, "help"))
-    // {
-    //     printHelp();
-    // }
-    if (strcmp(command, "count"))
+    if (strcmp(command, "help\n") == 0)
+    {
+        printHelp();
+    }
+    else if (strcmp(command, "count\n") == 0)
     {
         printCount();
     }
-    else if (strcmp(command, "length"))
+    else if (strcmp(command, "length\n") == 0)
     {
         printLength();
     }
-    else if (strcmp(command, "history"))
+    else if (strcmp(command, "history\n") == 0)
     {
         printHistory();
     }
-    else if (strncmp(command, "get ", 4))
+    else if (strncmp(command, "get \n", 4) == 0)
     {
         int n = atoi(command + 4);
         printGetN(n);
     }
-    // else if (strcmp(command, "dips"))
+    // else if (strcmp(command, "dips") == 0)
     // {
     //     printDips();
     // }
-    else if (strcmp(command, "stop"))
+    else if (strcmp(command, "stop\n") == 0)
     {
-        printf("Program terminating.\n");
+        stop();
         exit(0);
     }
     else
     {
-        printf("Error: command '%s' not recognized.\n", command);
-        printf("testing...");
-        //printHelp();
+        char buffer[MAX_BUFFER_SIZE];
+        sprintf(buffer, "The command '%s' is not recognized.\n\n", command);
+        sendMessage(buffer);
+        printHelp();
     }
 }
 
-// Thread function to listen for UDP packets. You can assume that 1,500 bytes of data will fit into a UDP packet.
 void *udpThread(void *arg)
 {
-    char buffer[MAX_BUFFER_SIZE] = "";
-    char lastCommand[MAX_BUFFER_SIZE] = "";
-    int n = 0;
+    char buffer[MAX_BUFFER_SIZE];
+    char lastCommand[MAX_BUFFER_SIZE];
 
     while (udpThreadRunning)
     {
-        n = receivePacket(buffer);
-        buffer[n] = '\0';
+        int dataSize = receivePacket(buffer);
+        buffer[dataSize] = '\0';
 
-        if (strcmp(buffer, ""))
+        if (strcmp(buffer, "\n") == 0)
         {
             strcpy(buffer, lastCommand);
         }
@@ -220,26 +262,21 @@ void *udpThread(void *arg)
             strcpy(lastCommand, buffer);
         }
         handleCommand(buffer);
-       // sendPacket(buffer);
     }
     return NULL;
 }
 
-// Create a thread to listen for UDP packets
+// Creates a thread that listens for UDP packets.
 void startUdpThread()
 {
-    if (udpThreadRunning)
-    {
-        return;
-    }
-    setupSocket();
+    setupUdpSocket();
     pthread_t tid;
     pthread_create(&tid, NULL, udpThread, NULL);
 
     udpThreadRunning = true;
 }
 
-// Stop the UDP thread
+// Stops the UDP thread currently running.
 void stopUdpThread()
 {
     udpThreadRunning = false;
