@@ -4,19 +4,46 @@
 #define PORT 12345
 #define MAX_BUFFER_SIZE 1500
 
-// function to set up the UDP socket
-void setupSocket(void);
+// Sends a message through the UDP socket.
+void sendMessage(char *message);
 
-// function to send a UDP packet
-void sendPacket(char *buffer);
+// Sets up the UDP socket by creating it and binding it to an address.
+void setupUdpSocket(void);
 
-// function to close the UDP socket
+// Receives a UDP packet.
+int receivePacket(char *buffer);
+
+// Closes the UDP socket.
 void closeSocket(void);
 
-// Create a thread to listen for UDP packets
+// Prints the help message.
+void printHelp(void);
+
+// Prints the number of samples taken by the sampler.
+void printCount(void);
+
+// Prints the length of the sampler history.
+void printLength(void);
+
+// Prints the entire history of samples taken by the sampler.
+void printHistory(void);
+
+// Prints the last n samples taken by the sampler.
+void printLastN(int n);
+
+// Prints the number of dips taken by the sampler.
+void printDips(void);
+
+// Closes all threads and sockets and exits.
+void stop(void);
+
+// Handles which print function to call based on the received command.
+void handleCommand(char *command);
+
+// Creates a thread that listens for UDP packets.
 void startUdpThread();
 
-// Stop the thread listening for UDP packets
+// Stops the UDP thread currently running.
 void stopUdpThread();
 
 #endif

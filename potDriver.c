@@ -7,11 +7,14 @@
 #include <unistd.h>
 #include "sampler.h"
 #include "i2c.h"
+#include "udp.h"
 
 // main driver
 int main()
 {
 	Sampler_startSampling();
+	startUdpThread();
+	startDisplayThread();
 	// sleep(3);
 	// Sampler_stopSampling();
 	// while (true)
@@ -51,9 +54,10 @@ int main()
 // 	free(history);
 
 while(true) {
-startDisplayThread();
+// stay alive
 }
 
 // sleep(10);
 // stopDisplayThread();
+return 0;
 }
