@@ -6,6 +6,7 @@
 // Used to execute a shell command
 void runCommand(char *command);
 
+// Returns the current time in milliseconds
 long long getTimeInMs(void);
 
 #endif

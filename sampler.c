@@ -145,15 +145,16 @@ void Sampler_startSampling(void)
         return;
     }
 
-    // pthread_t samplerThread;
+    pthread_t samplerThread;
     pthread_mutex_init(&mutex, NULL);
     pthread_mutex_init(&getter_mutex, NULL);
-
-    buffer = (double *)malloc(sizeof(double) * buffer_capacity);
-    // pthread_create(&samplerThread, NULL, sample, NULL);
+    
     samplerThreadRunning = true;
+    buffer = (double *)malloc(sizeof(double) * buffer_capacity);
+    pthread_create(&samplerThread, NULL, sample, NULL);
 
-    // pthread_detach(samplerThread);
+
+    pthread_detach(samplerThread);
 }
 
 void Sampler_stopSampling(void)

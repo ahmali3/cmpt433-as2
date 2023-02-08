@@ -104,6 +104,12 @@ void startDisplayThread(void)
 	if (displayThreadRunning)
 		return;
 	displayThreadRunning = true;
+	
+	pthread_t displayThread;
+	pthread_create(&displayThread, NULL, displayDigits, NULL);
+
+	//detach the thread so that it will be cleaned up when it exits
+	pthread_detach(displayThread);
 }
 
 // Stops the background thread which displays the digits
@@ -149,11 +155,11 @@ void initDisplay(void)
 {
 	// Configure both pins on the microprocessor for output through GPIO.
 	// If GPIO pins not yet exported, then export them (avoid re-exporting pins)
-	if (system("echo 61 > /sys/class/gpio/export") != 0)
-		system("echo 61 > /sys/class/gpio/export");
+	// if (system("echo 61 > /sys/class/gpio/export") != 0)
+	// 	system("echo 61 > /sys/class/gpio/export");
 
-	if (system("echo 44 > /sys/class/gpio/export") != 0)
-		system("echo 44 > /sys/class/gpio/export");
+	// if (system("echo 44 > /sys/class/gpio/export") != 0)
+	// 	system("echo 44 > /sys/class/gpio/export");
 
 	// Enable Linux I2C support for Linux I2C bus #1 (HW bus 1)
 	runCommand("config-pin P9_18 i2c");

@@ -7,29 +7,12 @@
 #include <pthread.h>
 #include <stdio.h>
 
-int threadArr[4];
-
 void runAllThreads()
 {
-    pthread_t samplerThread, dipCounterThread, displayThread, udpThread;
+    Sampler_startSampling(); // this starts the sampler thread in the background
+    startDipCounterThread(); // this starts the dip counter thread in the background
 
-    threadArr[0] = pthread_create(&samplerThread, NULL, sample, NULL);
-    threadArr[1] = pthread_create(&dipCounterThread, NULL, dipCounter, NULL);
-    threadArr[2] = pthread_create(&displayThread, NULL, displayDigits, NULL);
-    threadArr[3] = pthread_create(&udpThread, NULL, udpServerThread, NULL);
-
-    // for (int i = 0; i < 4; i++)
-    // {
-    //     if (threadArr[i] != 0)
-    //     {
-    //         printf("Thread %d failed to start\n", i);
-    //     }
-    // }
-
-    pthread_join(samplerThread, NULL);
-    pthread_join(dipCounterThread, NULL);
-    pthread_join(displayThread, NULL);
-    pthread_join(udpThread, NULL);
-
+    startDisplayThread(); // this starts the display thread in the background
+    startUdpThread();     // this starts the udp thread in the background
     return;
 }

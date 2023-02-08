@@ -225,7 +225,7 @@ void handleCommand(char *command)
         int n = atoi(command + 4);
         printGetN(n);
     }
-    else if (strcmp(command, "dips") == 0)
+    else if (strcmp(command, "dips\n") == 0)
     {
         printDips();
     }
@@ -270,11 +270,17 @@ void *udpServerThread(void *arg)
 // Creates a thread that listens for UDP packets.
 void startUdpThread()
 {
+    if(udpThreadRunning)
+    {
+        return;
+    }
+
     setupUdpSocket();
-    // pthread_t tid;
-    // pthread_create(&tid, NULL, udpServerThread, NULL);
 
     udpThreadRunning = true;
+    pthread_t tid;
+    pthread_create(&tid, NULL, udpServerThread, NULL);
+    pthread_detach(tid);
 }
 
 // Stops the UDP thread currently running.

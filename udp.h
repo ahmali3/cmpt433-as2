@@ -1,3 +1,7 @@
+// This module listens to incoming UDP packets on port 12345 and implements a simple command-response system.
+// Each received packet is treated as a command and the module replies back to the sender with one or more UDP 
+// packets containing the response. The module supports several commands such as "help", "count", "get N",
+// "length", "history", "stop", and an empty input.
 #ifndef _UDP_H_
 #define _UDP_H_
 

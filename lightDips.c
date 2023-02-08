@@ -11,6 +11,7 @@
 #include "lightDips.h"
 
 Period_statistics_t stat;
+pthread_mutex_t dip_counter_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 bool dipThreadRunning = false;
 int dipCount = 0;
@@ -43,44 +44,41 @@ void *dipCounter(void *arg)
 		double average = Sampler_getAverageReading();
 		int POT = getPOTReading(); // 1.4
 		sampleCount = Sampler_getNumSamplesTaken() - sampleCount;
+
+		pthread_mutex_lock(&dip_counter_mutex);
 		dipCount = 0;
 		for (int i = 0; i < length && length >= 100; i++)
 		{
-			if (history[i] < average - (THRESHOLD + HYSTERESIS))
+			if (history[i] < average - THRESHOLD)
 			{
 				dipCount++;
 				// skip  the next readings if they are also below the threshold
-				while (i < length && history[i] < average - (THRESHOLD + HYSTERESIS))
+				while (i < length && history[i] < average - THRESHOLD + HYSTERESIS)
 				{
 					i++;
 				}
 				i--;
 			}
-
-			else if (history[i] > average + (THRESHOLD - HYSTERESIS))
+			else if (history[i] > average + THRESHOLD)
 			{
-
 				dipCount++;
-
 				// skip  the next readings if they are also above the threshold
-				while (i < length && history[i] > average + (THRESHOLD - HYSTERESIS))
+				while (i < length && history[i] > average + THRESHOLD - HYSTERESIS)
 				{
 					i++;
 				}
-
 				i--;
 			}
 		}
+		pthread_mutex_unlock(&dip_counter_mutex);
 
 		// print the data
 		printData(average, history, length, POT, dipCount);
 		free(history);
 
-		
-		//stop sampling if 10 dips are detected
+		// stop sampling if 10 dips are detected
 		if (dipCount >= MAX_DIPS)
 		{
-
 			// sleep until the buffer clears
 			int currentBufferSize = Sampler_getHistorySize();
 			int currentSampleCount = Sampler_getNumSamplesTaken();
@@ -100,8 +98,6 @@ void *dipCounter(void *arg)
 					Sampler_setHistorySize(POT);
 				}
 			}
-
-			// sleep for 1 second
 		}
 
 		// resize the buffer (1.4)
@@ -121,23 +117,25 @@ void *dipCounter(void *arg)
 
 int getDipCount()
 {
-	return dipCount;
+	int cpy;
+	pthread_mutex_lock(&dip_counter_mutex);
+	cpy = dipCount;
+	pthread_mutex_unlock(&dip_counter_mutex);
+	return cpy;
 }
 
 void startDipCounterThread()
 {
-	Period_init();
+	if(dipThreadRunning)
+		return;
 	dipThreadRunning = true;
-	// start the printer thread
-	//pthread_t printer;
-	//pthread_create(&printer, NULL, dipCounter, NULL);
-	// this thread will run until the user terminates the program
-
-	//pthread_join(printer, NULL);
+	dipCounter(NULL);
+	pthread_t printer;
+	pthread_create(&printer, NULL, dipCounter, NULL);
+	pthread_detach(printer);
 }
 
 void stopDipCounterThread()
 {
 	dipThreadRunning = false;
-	Period_cleanup();
 }
