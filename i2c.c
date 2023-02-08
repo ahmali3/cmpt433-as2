@@ -11,6 +11,14 @@
 #include "i2c.h"
 #include "utility.h"
 #include "sampler.h"
+#include "lightDips.h"
+
+#define LEFT_DIGIT_PIN 61
+#define RIGHT_DIGIT_PIN 44
+#define GPIO_OUTPUT "out"
+#define EXPORT_PATH "/sys/class/gpio/export"
+#define PIN_61_DIRECTION_PATH "/sys/class/gpio/gpio61/direction"
+#define PIN_44_DIRECTION_PATH "/sys/class/gpio/gpio44/direction"
 
 // Arrays of the hex values to write to the top and bottom segments of the 14-segment display
 int topDigits[10] = {0x86, 0x02, 0x0E, 0x06, 0x8A, 0x8C, 0x8C, 0x14, 0x8E, 0x8E};
@@ -20,9 +28,9 @@ bool displayThreadRunning = false;
 
 void modifyFile(FILE *file, char *value)
 {
-rewind(file);
-fputs(value, file);
-fflush(file);
+	rewind(file);
+	fputs(value, file);
+	fflush(file);
 }
 
 // Background thread that displays the digits on the 14-segment display
@@ -31,8 +39,8 @@ void *displayDigits(void *arg)
 	int i2cFileDesc = initI2cBus(I2CDRV_LINUX_BUS1, I2C_DEVICE_ADDRESS);
 	initDisplay();
 	startDisplayThread();
-    writeI2cReg(i2cFileDesc, REG_DIRA, 0x00);
-    writeI2cReg(i2cFileDesc, REG_DIRB, 0x00);
+	writeI2cReg(i2cFileDesc, REG_DIRA, 0x00);
+	writeI2cReg(i2cFileDesc, REG_DIRB, 0x00);
 
 	FILE *leftDigitFile = fopen("/sys/class/gpio/gpio61/value", "w");
 	FILE *rightDigitFile = fopen("/sys/class/gpio/gpio44/value", "w");
@@ -41,20 +49,19 @@ void *displayDigits(void *arg)
 	int rightDigit = 0;
 	long long timeElapsedInMs = 0;
 	long long start = getTimeInMs();
-    long long end = getTimeInMs();
+	long long end = getTimeInMs();
 
-    while (displayThreadRunning)
-    {
+	while (displayThreadRunning)
+	{
 		end = getTimeInMs();
 		timeElapsedInMs = end - start;
 		if (timeElapsedInMs >= 100)
 		{
 			start = getTimeInMs();
 			timeElapsedInMs = 0;
-			if (Sampler_getNumSamplesInHistory() > 99)
+			numDips = getDipCount();
+			if (numDips > 99)
 				numDips = 99;
-			else
-				numDips = Sampler_getNumSamplesInHistory();
 
 			leftDigit = numDips / 10;
 			rightDigit = numDips % 10;
@@ -71,7 +78,7 @@ void *displayDigits(void *arg)
 		// Turn on left digit
 		modifyFile(leftDigitFile, TURN_ON);
 
-        usleep(5000);
+		usleep(5000);
 
 		// Set both pins to 0
 		modifyFile(leftDigitFile, TURN_OFF);
@@ -85,7 +92,7 @@ void *displayDigits(void *arg)
 		modifyFile(rightDigitFile, TURN_ON);
 
 		usleep(5000);
-    }
+	}
 	fclose(leftDigitFile);
 	fclose(rightDigitFile);
 	return NULL;
@@ -105,17 +112,19 @@ void stopDisplayThread(void)
 	displayThreadRunning = false;
 }
 
-int initI2cBus(char* bus, int address)
+int initI2cBus(char *bus, int address)
 {
 	int i2cFileDesc = open(bus, O_RDWR);
-	if (i2cFileDesc < 0) {
+	if (i2cFileDesc < 0)
+	{
 		printf("I2C DRV: Unable to open bus for read/write (%s)\n", bus);
 		perror("Error is:");
 		exit(-1);
 	}
 
 	int result = ioctl(i2cFileDesc, I2C_SLAVE, address);
-	if (result < 0) {
+	if (result < 0)
+	{
 		perror("Unable to set I2C device to slave address.");
 		exit(-1);
 	}
@@ -128,7 +137,8 @@ void writeI2cReg(int i2cFileDesc, unsigned char regAddr, unsigned char value)
 	buff[0] = regAddr;
 	buff[1] = value;
 	int res = write(i2cFileDesc, buff, 2);
-	if (res != 2) {
+	if (res != 2)
+	{
 		perror("Unable to write i2c register");
 		exit(-1);
 	}
@@ -138,7 +148,7 @@ void writeI2cReg(int i2cFileDesc, unsigned char regAddr, unsigned char value)
 void initDisplay(void)
 {
 	// Configure both pins on the microprocessor for output through GPIO.
-    // If GPIO pins not yet exported, then export them (avoid re-exporting pins)	
+	// If GPIO pins not yet exported, then export them (avoid re-exporting pins)
 	if (system("echo 61 > /sys/class/gpio/export") != 0)
 		system("echo 61 > /sys/class/gpio/export");
 

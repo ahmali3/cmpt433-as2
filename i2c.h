@@ -28,4 +28,6 @@ void initDisplay(void);
 // Background thread that displays the digits on the 14-segment display
 void *displayDigits(void *arg);
 
+void runInitDisplay(void);
+
 #endif

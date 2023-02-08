@@ -1,8 +1,9 @@
 #include "threadManager.h"
-#include "i2c.h"
+#include <stdio.h>
 
 int main()
 {
     runAllThreads();
+    printf("Hello World\n");
     return 0;
 }
