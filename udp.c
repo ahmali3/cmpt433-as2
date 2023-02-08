@@ -10,6 +10,7 @@
 #include "i2c.h"
 #include "udp.h"
 #include "utility.h"
+#include "lightDips.h"
 
 bool udpThreadRunning = false;
 
@@ -180,14 +181,13 @@ void printGetN(int n)
     sendMessage(buffer);
 }
 
-// function to print the number of dips
-// void printDips(void)
-// {
-//     char buffer[MAX_BUFFER_SIZE];
-//     sprintf(buffer, "# Dips = %d.\n\n", Sampler_getNumDips());
-//     // send the char to the client
-//     sendMessage(buffer);
-// }
+// Prints the number of dips in the history.
+void printDips(void)
+{
+    char buffer[MAX_BUFFER_SIZE];
+    sprintf(buffer, "# Dips = %d.\n\n", getDipCount());
+    sendMessage(buffer);
+}
 
 // Closes all threads and sockets and exits.
 void stop(void)
@@ -225,10 +225,10 @@ void handleCommand(char *command)
         int n = atoi(command + 4);
         printGetN(n);
     }
-    // else if (strcmp(command, "dips") == 0)
-    // {
-    //     printDips();
-    // }
+    else if (strcmp(command, "dips") == 0)
+    {
+        printDips();
+    }
     else if (strcmp(command, "stop\n") == 0)
     {
         stop();
@@ -243,8 +243,9 @@ void handleCommand(char *command)
     }
 }
 
-void *udpThread(void *arg)
+void *udpServerThread(void *arg)
 {
+    startUdpThread();
     char buffer[MAX_BUFFER_SIZE];
     char lastCommand[MAX_BUFFER_SIZE];
 
@@ -270,8 +271,8 @@ void *udpThread(void *arg)
 void startUdpThread()
 {
     setupUdpSocket();
-    pthread_t tid;
-    pthread_create(&tid, NULL, udpThread, NULL);
+    // pthread_t tid;
+    // pthread_create(&tid, NULL, udpServerThread, NULL);
 
     udpThreadRunning = true;
 }

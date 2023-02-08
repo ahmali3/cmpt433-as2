@@ -42,4 +42,8 @@ double Sampler_getAverageReading(void);
 long long Sampler_getNumSamplesTaken(void);
 
 int getPOTReading();
+
+double getReading();
+
+void *sample(void *args);
 #endif

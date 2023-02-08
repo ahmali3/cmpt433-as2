@@ -25,12 +25,12 @@ fputs(value, file);
 fflush(file);
 }
 
-
 // Background thread that displays the digits on the 14-segment display
 void *displayDigits(void *arg)
 {
 	int i2cFileDesc = initI2cBus(I2CDRV_LINUX_BUS1, I2C_DEVICE_ADDRESS);
 	initDisplay();
+	startDisplayThread();
     writeI2cReg(i2cFileDesc, REG_DIRA, 0x00);
     writeI2cReg(i2cFileDesc, REG_DIRB, 0x00);
 
@@ -85,8 +85,9 @@ void *displayDigits(void *arg)
 		modifyFile(rightDigitFile, TURN_ON);
 
 		usleep(5000);
-		timeElapsedInMs += 10;
     }
+	fclose(leftDigitFile);
+	fclose(rightDigitFile);
 	return NULL;
 }
 
@@ -95,11 +96,7 @@ void startDisplayThread(void)
 {
 	if (displayThreadRunning)
 		return;
-
 	displayThreadRunning = true;
-	pthread_t displayThread;
-	pthread_create(&displayThread, NULL, displayDigits, NULL);
-	pthread_detach(displayThread);
 }
 
 // Stops the background thread which displays the digits

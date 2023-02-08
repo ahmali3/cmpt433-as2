@@ -25,4 +25,7 @@ void stopDisplayThread(void);
 // Initializes the 14-segment i2c display
 void initDisplay(void);
 
+// Background thread that displays the digits on the 14-segment display
+void *displayDigits(void *arg);
+
 #endif

@@ -56,12 +56,10 @@ double getReading()
         printf("ERROR: Unable to read values from voltage input file.\n");
         exit(-1);
     }
-
     // Close file
     fclose(f);
 
     double voltage = ((double)a2dReading / A2D_MAX_READING) * A2D_VOLTAGE_REF_V;
-
     return voltage;
 #else
     return rand() % 1000;
@@ -88,6 +86,7 @@ bool samplerThreadRunning = false;
 
 void *sample(void *args)
 {
+    Sampler_startSampling();
     while (samplerThreadRunning)
     {
         double reading = getReading();
@@ -146,15 +145,15 @@ void Sampler_startSampling(void)
         return;
     }
 
-    pthread_t samplerThread;
+    // pthread_t samplerThread;
     pthread_mutex_init(&mutex, NULL);
     pthread_mutex_init(&getter_mutex, NULL);
 
     buffer = (double *)malloc(sizeof(double) * buffer_capacity);
-    pthread_create(&samplerThread, NULL, sample, NULL);
+    // pthread_create(&samplerThread, NULL, sample, NULL);
     samplerThreadRunning = true;
 
-    pthread_detach(samplerThread);
+    // pthread_detach(samplerThread);
 }
 
 void Sampler_stopSampling(void)

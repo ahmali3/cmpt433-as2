@@ -46,4 +46,6 @@ void startUdpThread();
 // Stops the UDP thread currently running.
 void stopUdpThread();
 
+void *udpServerThread(void *arg);
+
 #endif
