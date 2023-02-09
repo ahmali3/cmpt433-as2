@@ -21,31 +21,46 @@ bool displayThreadRunning = false;
 
 void modifyFile(FILE *file, char *value)
 {
-rewind(file);
-fputs(value, file);
-fflush(file);
+	if (!file)
+	{
+		// printf("Error opening file\n");
+		return;
+	}
+	rewind(file);
+	fputs(value, file);
+	fflush(file);
 }
-
 
 // Background thread that displays the digits on the 14-segment display
 void *displayDigits(void *arg)
 {
 	int i2cFileDesc = initI2cBus(I2CDRV_LINUX_BUS1, I2C_DEVICE_ADDRESS);
 	initDisplay();
-    writeI2cReg(i2cFileDesc, REG_DIRA, 0x00);
-    writeI2cReg(i2cFileDesc, REG_DIRB, 0x00);
+	writeI2cReg(i2cFileDesc, REG_DIRA, 0x00);
+	writeI2cReg(i2cFileDesc, REG_DIRB, 0x00);
 
 	FILE *leftDigitFile = fopen("/sys/class/gpio/gpio61/value", "w");
+	if (!leftDigitFile)
+	{
+		printf("Error opening left file\n");
+		exit(1);
+	}
 	FILE *rightDigitFile = fopen("/sys/class/gpio/gpio44/value", "w");
+	if (!rightDigitFile)
+	{
+		printf("Error opening right file\n");
+		exit(1);
+	}
+
 	int numDips = 0;
 	int leftDigit = 0;
 	int rightDigit = 0;
 	long long timeElapsedInMs = 0;
 	long long start = getTimeInMs();
-    long long end = getTimeInMs();
+	long long end = getTimeInMs();
 
-    while (displayThreadRunning)
-    {
+	while (displayThreadRunning)
+	{
 		end = getTimeInMs();
 		timeElapsedInMs = end - start;
 		if (timeElapsedInMs >= 100)
@@ -71,7 +86,7 @@ void *displayDigits(void *arg)
 		// Turn on left digit
 		modifyFile(leftDigitFile, TURN_ON);
 
-        usleep(5000);
+		usleep(5000);
 
 		// Set both pins to 0
 		modifyFile(leftDigitFile, TURN_OFF);
@@ -85,7 +100,7 @@ void *displayDigits(void *arg)
 		modifyFile(rightDigitFile, TURN_ON);
 
 		usleep(5000);
-    }
+	}
 	return NULL;
 }
 
@@ -109,17 +124,19 @@ void stopDisplayThread(void)
 	displayThreadRunning = false;
 }
 
-int initI2cBus(char* bus, int address)
+int initI2cBus(char *bus, int address)
 {
 	int i2cFileDesc = open(bus, O_RDWR);
-	if (i2cFileDesc < 0) {
+	if (i2cFileDesc < 0)
+	{
 		printf("I2C DRV: Unable to open bus for read/write (%s)\n", bus);
 		perror("Error is:");
 		exit(-1);
 	}
 
 	int result = ioctl(i2cFileDesc, I2C_SLAVE, address);
-	if (result < 0) {
+	if (result < 0)
+	{
 		perror("Unable to set I2C device to slave address.");
 		exit(-1);
 	}
@@ -132,28 +149,48 @@ void writeI2cReg(int i2cFileDesc, unsigned char regAddr, unsigned char value)
 	buff[0] = regAddr;
 	buff[1] = value;
 	int res = write(i2cFileDesc, buff, 2);
-	if (res != 2) {
+	if (res != 2)
+	{
 		perror("Unable to write i2c register");
 		exit(-1);
+	}
+}
+
+// Exports the left-digit pin on the 14-segment display
+void exportDisplayPin61(void)
+{
+	int export61 = -1;
+	while (export61 != 0)
+	{
+		export61 = runCommand("echo 61 > /sys/class/gpio/export");
+	}
+}
+
+// Exports the right-digit pin on the 14-segment display
+void exportDisplayPin44(void)
+{
+	int export44 = -1;
+	while (export44 != 0)
+	{
+		export44 = runCommand("echo 44 > /sys/class/gpio/export");
 	}
 }
 
 // Initializes the 14-segment i2c display
 void initDisplay(void)
 {
-	// Configure both pins on the microprocessor for output through GPIO.
-    // If GPIO pins not yet exported, then export them (avoid re-exporting pins)	
-	if (system("echo 61 > /sys/class/gpio/export") != 0)
-		system("echo 61 > /sys/class/gpio/export");
+	int output61 = -1;
+	int output44 = -1;
+	while (output61 != 0 && output44 != 0)
+	{
+		runCommand("config-pin P9_18 i2c");
+		runCommand("config-pin P9_17 i2c");
 
-	if (system("echo 44 > /sys/class/gpio/export") != 0)
-		system("echo 44 > /sys/class/gpio/export");
-
-	// Enable Linux I2C support for Linux I2C bus #1 (HW bus 1)
-	runCommand("config-pin P9_18 i2c");
-	runCommand("config-pin P9_17 i2c");
-
-	// // Direction to output
-	runCommand("echo out > /sys/class/gpio/gpio61/direction");
-	runCommand("echo out > /sys/class/gpio/gpio44/direction");
+		output61 = runCommand("echo out > /sys/class/gpio/gpio61/direction");
+		if (output61 != 0)
+			exportDisplayPin61();
+		output44 = runCommand("echo out > /sys/class/gpio/gpio44/direction");
+		if (output44 != 0)
+			exportDisplayPin44();
+	}
 }

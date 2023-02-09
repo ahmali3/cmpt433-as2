@@ -26,4 +26,10 @@ void stopDisplayThread(void);
 // Initializes the 14-segment i2c display
 void initDisplay(void);
 
+// Exports the left-digit pin on the 14-segment display
+void exportDisplayPin61(void);
+
+// Exports the right-digit pin on the 14-segment display
+void exportDisplayPin44(void);
+
 #endif
