@@ -5,19 +5,22 @@
 #include <stdbool.h>
 #include <pthread.h>
 #include <unistd.h>
+#include "periodTimer.h"
+#include "threadManager.h"
 
 // turn on DEV to use the simulator
 // set to 0 to use the real hardware
 #define DEV 0
-
+// reads the voltage from the potentiometer(1.4)
 int getPOTReading()
 {
 #if !DEV
+    // Open file
     FILE *f = fopen(A2D_FILE_VOLTAGE0, "r");
     if (!f)
     {
         printf("ERROR: Unable to open voltage input file. Cape loaded?\n");
-        printf("       Check /boot/uEnv.txt for correct options.\n");
+        printf(" Check /boot/uEnv.txt for correct options.\n");
         exit(-1);
     }
     // Get reading
@@ -28,13 +31,11 @@ int getPOTReading()
         printf("ERROR: Unable to read values from voltage input file.\n");
         exit(-1);
     }
-
     // Close file
     fclose(f);
-
     return a2dReading;
 #else
-    return rand() % 1000;
+    return rand() % 4096;
 #endif
 }
 
@@ -84,36 +85,25 @@ int buffer_tail = 0;
 long long samples_taken = 0;
 double *buffer = NULL;
 
-bool samplerThreadRunning = false;
-
 void *sample(void *args)
 {
-    while (samplerThreadRunning)
+    while (allThreadsRunning)
     {
         double reading = getReading();
-        double potReading = getPOTReading();
-
-        // Use the value read from the POT as the size of the history, except use size 1 if reading 0.
-        if (potReading == 0)
-        {
-            Sampler_setHistorySize(1);
-        }
-        else
-        {
-            Sampler_setHistorySize(potReading);
-        }
+        Period_markEvent(PERIOD_EVENT_SAMPLE_LIGHT);
 
         // Initially set the average as the first read value
         if (samples_taken == 0)
         {
             average = reading;
         }
-        
+
         pthread_mutex_lock(&mutex);
         if (buffer_size == buffer_capacity)
         {
             buffer_tail = (buffer_tail + 1) % buffer_capacity;
             buffer_size--;
+            buffer_head = (buffer_head + 1) % buffer_capacity;
         }
         // add the new reading to the buffer
         buffer[buffer_head] = reading;
@@ -123,12 +113,12 @@ void *sample(void *args)
 
         // update the average
         pthread_mutex_lock(&getter_mutex);
-        average = average * (1 - SMOOTHING_FACTOR) + reading * SMOOTHING_FACTOR;
+        average = (average * SMOOTHING_FACTOR) + ((1 - SMOOTHING_FACTOR) * reading);
 
         samples_taken++;
         pthread_mutex_unlock(&getter_mutex);
-        usleep(1000000 / SAMPLING_RATE); // sleep for 1/SAMPLING_RATE seconds
-                                         // usleep takes microseconds
+        // sleep for 1ms
+        usleep(1000); // 1ms
     }
 
     free(buffer);
@@ -138,28 +128,18 @@ void *sample(void *args)
 }
 
 // Begin/end the background thread which samples light levels.
-void Sampler_startSampling(void)
+void Sampler_startSampling(pthread_t *samplerThread)
 {
-
-    if (samplerThreadRunning)
-    {
-        return;
-    }
-
-    pthread_t samplerThread;
     pthread_mutex_init(&mutex, NULL);
     pthread_mutex_init(&getter_mutex, NULL);
 
     buffer = (double *)malloc(sizeof(double) * buffer_capacity);
-    pthread_create(&samplerThread, NULL, sample, NULL);
-    samplerThreadRunning = true;
-
-    pthread_detach(samplerThread);
+    pthread_create(samplerThread, NULL, sample, NULL); // this will call the sample() function in a new thread
 }
 
 void Sampler_stopSampling(void)
 {
-    samplerThreadRunning = false;
+    allThreadsRunning = false;
 }
 
 // Set/get the maximum number of samples to store in the history.
@@ -175,9 +155,8 @@ void Sampler_setHistorySize(int newSize)
     double *new_buffer = (double *)malloc(sizeof(double) * newSize);
     int new_buffer_size = 0;
     int new_buffer_head = 0;
-    int new_buffer_tail = 0;
 
-    for (int i = 0; i < buffer_size; i++)
+    for (int i = 0; i < buffer_size && i < newSize; i++)
     {
         new_buffer[new_buffer_head] = buffer[(buffer_tail + i) % buffer_capacity];
         new_buffer_head = (new_buffer_head + 1) % newSize;
@@ -187,9 +166,10 @@ void Sampler_setHistorySize(int newSize)
     free(buffer);
     buffer = new_buffer;
     buffer_capacity = newSize;
+
     buffer_size = new_buffer_size;
-    buffer_head = new_buffer_head;
-    buffer_tail = new_buffer_tail;
+    buffer_tail = 0;
+    buffer_head = new_buffer_size;
     pthread_mutex_unlock(&mutex);
 }
 

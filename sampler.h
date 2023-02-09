@@ -5,19 +5,21 @@
 #ifndef _SAMPLER_H_
 #define _SAMPLER_H_
 
+#include <pthread.h>
+
 #define A2D_FILE_VOLTAGE0 "/sys/bus/iio/devices/iio:device0/in_voltage0_raw"
 #define A2D_FILE_VOLTAGE1 "/sys/bus/iio/devices/iio:device0/in_voltage1_raw"
 #define A2D_VOLTAGE_REF_V 1.8
 #define A2D_MAX_READING 4095
 
-// sample 5 times per second
+// sample 50 times per second
 #define SAMPLING_RATE 50
-#define SMOOTHING_FACTOR 0.001
+#define SMOOTHING_FACTOR 0.999
 
 #define INITIAL_BUFFER_SIZE 100
 
 // Begin/end the background thread which samples light levels.
-void Sampler_startSampling(void);
+void Sampler_startSampling(pthread_t *samplerThread);
 void Sampler_stopSampling(void);
 
 // Set/get the maximum number of samples to store in the history.

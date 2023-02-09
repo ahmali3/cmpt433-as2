@@ -10,8 +10,8 @@
 #include "i2c.h"
 #include "udp.h"
 #include "utility.h"
-
-bool udpThreadRunning = false;
+#include "lightDips.h"
+#include "threadManager.h"
 
 // Socket variables
 int sock;
@@ -180,14 +180,13 @@ void printGetN(int n)
     sendMessage(buffer);
 }
 
-// function to print the number of dips
-// void printDips(void)
-// {
-//     char buffer[MAX_BUFFER_SIZE];
-//     sprintf(buffer, "# Dips = %d.\n\n", Sampler_getNumDips());
-//     // send the char to the client
-//     sendMessage(buffer);
-// }
+// Prints the number of dips in the history.
+void printDips(void)
+{
+    char buffer[MAX_BUFFER_SIZE];
+    sprintf(buffer, "# Dips = %d.\n\n", getDipCount());
+    sendMessage(buffer);
+}
 
 // Closes all threads and sockets and exits.
 void stop(void)
@@ -195,10 +194,8 @@ void stop(void)
     char buffer[MAX_BUFFER_SIZE];
     sprintf(buffer, "Stopping program.\n\n");
     sendMessage(buffer);
-    printf("Stopping program.\n\n");
-
+    printf("\nStopping program.\n\n");
     stopUdpThread();
-    exit(0);
 }
 
 // Handles which print function to call based on the received command.
@@ -225,30 +222,29 @@ void handleCommand(char *command)
         int n = atoi(command + 4);
         printGetN(n);
     }
-    // else if (strcmp(command, "dips") == 0)
-    // {
-    //     printDips();
-    // }
+    else if (strcmp(command, "dips\n") == 0)
+    {
+        printDips();
+    }
     else if (strcmp(command, "stop\n") == 0)
     {
         stop();
-        exit(0);
     }
     else
     {
         char buffer[MAX_BUFFER_SIZE];
-        sprintf(buffer, "The command '%s' is not recognized.\n\n", command);
+        sprintf(buffer, "The command was not recognized.\n\n");
         sendMessage(buffer);
         printHelp();
     }
 }
 
-void *udpThread(void *arg)
+void *udpServerThread(void *arg)
 {
     char buffer[MAX_BUFFER_SIZE];
     char lastCommand[MAX_BUFFER_SIZE];
 
-    while (udpThreadRunning)
+    while (allThreadsRunning)
     {
         int dataSize = receivePacket(buffer);
         buffer[dataSize] = '\0';
@@ -267,18 +263,15 @@ void *udpThread(void *arg)
 }
 
 // Creates a thread that listens for UDP packets.
-void startUdpThread()
+void startUdpThread(pthread_t *thread)
 {
     setupUdpSocket();
-    pthread_t tid;
-    pthread_create(&tid, NULL, udpThread, NULL);
-
-    udpThreadRunning = true;
+    pthread_create(thread, NULL, udpServerThread, NULL);
 }
 
 // Stops the UDP thread currently running.
-void stopUdpThread()
+void stopUdpThread(void)
 {
-    udpThreadRunning = false;
     closeSocket();
+    allThreadsRunning = false;
 }

@@ -1,3 +1,7 @@
+// This module listens to incoming UDP packets on port 12345 and implements a simple command-response system.
+// Each received packet is treated as a command and the module replies back to the sender with one or more UDP 
+// packets containing the response. The module supports several commands such as "help", "count", "get N",
+// "length", "history", "stop", and an empty input.
 #ifndef _UDP_H_
 #define _UDP_H_
 
@@ -41,9 +45,11 @@ void stop(void);
 void handleCommand(char *command);
 
 // Creates a thread that listens for UDP packets.
-void startUdpThread();
+void startUdpThread(pthread_t *thread);
 
 // Stops the UDP thread currently running.
 void stopUdpThread();
+
+void *udpServerThread(void *arg);
 
 #endif

@@ -1,4 +1,5 @@
-
+// Module that uses the Zen cape's two digit 14-segment display to display the number of dips that the program
+// has detected within the currently stored history.
 #ifndef _I2C_H_
 #define _I2C_H_
 #define I2CDRV_LINUX_BUS1 "/dev/i2c-1"
@@ -17,12 +18,18 @@ int initI2cBus(char* bus, int address);
 void writeI2cReg(int i2cFileDesc, unsigned char regAddr, unsigned char value);
 
 // Begins the background thread which displays the digits
-void startDisplayThread(void);
+void startDisplayThread(pthread_t *thread);
 
 // Stops the background thread which displays the digits
 void stopDisplayThread(void);
 
 // Initializes the 14-segment i2c display
 void initDisplay(void);
+
+// Exports the left-digit pin on the 14-segment display
+void exportDisplayPin61(void);
+
+// Exports the right-digit pin on the 14-segment display
+void exportDisplayPin44(void);
 
 #endif
