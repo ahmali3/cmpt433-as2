@@ -12,19 +12,18 @@
 #include "utility.h"
 #include "sampler.h"
 #include "lightDips.h"
+#include "threadManager.h"
 
 // Arrays of the hex values to write to the top and bottom segments of the 14-segment display
 int topDigits[10] = {0x86, 0x02, 0x0E, 0x06, 0x8A, 0x8C, 0x8C, 0x14, 0x8E, 0x8E};
 int bottomDigits[10] = {0xA1, 0x80, 0x31, 0xB0, 0x90, 0xB0, 0xB1, 0x02, 0xB1, 0x90};
 
-bool displayThreadRunning = false;
-
 void modifyFile(FILE *file, char *value)
 {
 	if (!file)
 	{
-		// printf("Error opening file\n");
-		return;
+		printf("Error modifying file. File is NULL.\n");
+		exit(1);
 	}
 	rewind(file);
 	fputs(value, file);
@@ -40,17 +39,7 @@ void *displayDigits(void *arg)
 	writeI2cReg(i2cFileDesc, REG_DIRB, 0x00);
 
 	FILE *leftDigitFile = fopen("/sys/class/gpio/gpio61/value", "w");
-	if (!leftDigitFile)
-	{
-		printf("Error opening left file\n");
-		exit(1);
-	}
 	FILE *rightDigitFile = fopen("/sys/class/gpio/gpio44/value", "w");
-	if (!rightDigitFile)
-	{
-		printf("Error opening right file\n");
-		exit(1);
-	}
 
 	int numDips = 0;
 	int leftDigit = 0;
@@ -59,7 +48,7 @@ void *displayDigits(void *arg)
 	long long start = getTimeInMs();
 	long long end = getTimeInMs();
 
-	while (displayThreadRunning)
+	while (allThreadsRunning)
 	{
 		end = getTimeInMs();
 		timeElapsedInMs = end - start;
@@ -75,7 +64,7 @@ void *displayDigits(void *arg)
 			rightDigit = numDips % 10;
 		}
 
-		// Set both pins to 0
+		// Set both pins off
 		modifyFile(leftDigitFile, TURN_OFF);
 		modifyFile(rightDigitFile, TURN_OFF);
 
@@ -88,7 +77,7 @@ void *displayDigits(void *arg)
 
 		usleep(5000);
 
-		// Set both pins to 0
+		// Set both pins off
 		modifyFile(leftDigitFile, TURN_OFF);
 		modifyFile(rightDigitFile, TURN_OFF);
 
@@ -101,27 +90,24 @@ void *displayDigits(void *arg)
 
 		usleep(5000);
 	}
+	// Set both pins off before exiting
+	modifyFile(leftDigitFile, TURN_OFF);
+	modifyFile(rightDigitFile, TURN_OFF);
+	fclose(leftDigitFile);
+	fclose(rightDigitFile);
 	return NULL;
 }
 
 // Begins the background thread which displays the digits
 void startDisplayThread(pthread_t *thread)
 {
-	if (displayThreadRunning)
-		return;
-
-	displayThreadRunning = true; // This has to be set before the thread is created
-								 // Otherwise the thread will exit immediately because
-								 // the main while loop in displayDigits will not be entered
-
 	pthread_create(thread, NULL, displayDigits, NULL); // this will call displayDigits in a background thread
-													   // you dont  need to call displayDigits yourself
 }
 
 // Stops the background thread which displays the digits
-void stopDisplayThread(void)
+void stopDisplayThread()
 {
-	displayThreadRunning = false;
+    allThreadsRunning = false;
 }
 
 int initI2cBus(char *bus, int address)

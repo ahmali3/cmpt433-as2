@@ -6,6 +6,7 @@
 #include <pthread.h>
 #include <unistd.h>
 #include "periodTimer.h"
+#include "threadManager.h"
 
 // turn on DEV to use the simulator
 // set to 0 to use the real hardware
@@ -84,26 +85,12 @@ int buffer_tail = 0;
 long long samples_taken = 0;
 double *buffer = NULL;
 
-bool samplerThreadRunning = false;
-
 void *sample(void *args)
 {
-    while (samplerThreadRunning)
+    while (allThreadsRunning)
     {
         double reading = getReading();
         Period_markEvent(PERIOD_EVENT_SAMPLE_LIGHT);
-        // POT reading should be called in every 1 sec from the POTdriver
-        //  double potReading = getPOTReading();
-
-        // Use the value read from the POT as the size of the history, except use size 1 if reading 0.
-        // if (potReading == 0)
-        // {
-        //     Sampler_setHistorySize(1);
-        // }
-        // else
-        // {
-        //     Sampler_setHistorySize(potReading);
-        // }
 
         // Initially set the average as the first read value
         if (samples_taken == 0)
@@ -126,7 +113,7 @@ void *sample(void *args)
 
         // update the average
         pthread_mutex_lock(&getter_mutex);
-        average = average * (1 - SMOOTHING_FACTOR) + reading * SMOOTHING_FACTOR;
+        average = (average * SMOOTHING_FACTOR) + ((1 - SMOOTHING_FACTOR) * reading);
 
         samples_taken++;
         pthread_mutex_unlock(&getter_mutex);
@@ -143,27 +130,16 @@ void *sample(void *args)
 // Begin/end the background thread which samples light levels.
 void Sampler_startSampling(pthread_t *samplerThread)
 {
-
-    if (samplerThreadRunning)
-    {
-        return;
-    }
-
     pthread_mutex_init(&mutex, NULL);
     pthread_mutex_init(&getter_mutex, NULL);
 
-    samplerThreadRunning = true; // this must be set before the thread is created
-                                 // otherwise the thread will exit immediately
-                                 // because it will see that the variable is false inside the while loop of sample() function
-
     buffer = (double *)malloc(sizeof(double) * buffer_capacity);
     pthread_create(samplerThread, NULL, sample, NULL); // this will call the sample() function in a new thread
-                                                      // you don't need to call sample() yourself
 }
 
 void Sampler_stopSampling(void)
 {
-    samplerThreadRunning = false;
+    allThreadsRunning = false;
 }
 
 // Set/get the maximum number of samples to store in the history.

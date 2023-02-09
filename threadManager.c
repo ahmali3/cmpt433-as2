@@ -1,18 +1,40 @@
-// #include "lightDips.h"
-// #include "sampler.h"
-// #include "i2c.h"
-// #include "udp.h"
-// #include "periodTimer.h"
-// #include "threadManager.h"
-// #include <pthread.h>
-// #include <stdio.h>
+// Demo application to read analog input voltage 0 on the BeagleBone
+// Assumes ADC cape already loaded by uBoot:
+#define _DEFAULT_SOURCE
+#include <stdlib.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <pthread.h>
+#include <unistd.h>
+#include "sampler.h"
+#include "i2c.h"
+#include "periodTimer.h"
+#include "lightDips.h"
+#include "udp.h"
+#include "threadManager.h"
 
-// void runAllThreads()
-// {
-//     Sampler_startSampling(); // this starts the sampler thread in the background
-//     startDipCounterThread(); // this starts the dip counter thread in the background
+bool allThreadsRunning = true;
 
-//     startDisplayThread(); // this starts the display thread in the background
-//     startUdpThread();     // this starts the udp thread in the background
-//     return;
-// }
+// Runs all of the threads that the program requires.
+void runProgram(void)
+{
+	pthread_t sampler_thread, dipcounter_thread, display_thread, udp_thread;
+
+	Period_init();
+
+    Sampler_startSampling(&sampler_thread);
+	startDipCounterThread(&dipcounter_thread);
+	startDisplayThread(&display_thread);
+	startUdpThread(&udp_thread);
+ 
+    pthread_join(sampler_thread, NULL);
+    pthread_join(dipcounter_thread, NULL);
+    pthread_join(display_thread, NULL);
+    pthread_join(udp_thread, NULL);
+
+	Period_cleanup();
+    printf("\nAll threads stopped\n");
+
+	return;
+}

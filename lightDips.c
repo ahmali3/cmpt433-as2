@@ -9,17 +9,21 @@
 #include "i2c.h"
 #include "periodTimer.h"
 #include "lightDips.h"
+#include "threadManager.h"
 
 Period_statistics_t stat;
 pthread_mutex_t dip_counter_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-bool dipThreadRunning = false;
 int dipCount = 0;
 
 void printData(double avgLight, double *history, int length, int POTsize, int dips)
 {
 	// show the statistics
 	Period_getStatisticsAndClear(PERIOD_EVENT_SAMPLE_LIGHT, &stat);
+
+	if (dips > MAX_DIPS) {
+		dips = MAX_DIPS;
+	}
 
 	printf("Samples/s = %d Pot Value = %d history size = %d avg = %.3lf dips = %d ", stat.numSamples, POTsize, length, avgLight, dips);
 	printf("Sampling[%.3lf %.3lf]avg %.3f/%d\n", stat.minPeriodInMs, stat.maxPeriodInMs, stat.avgPeriodInMs, stat.numSamples);
@@ -37,11 +41,11 @@ void *dipCounter(void *arg)
 	int length;
 	double *history;
 	long long sampleCount = Sampler_getNumSamplesTaken();
-	while (dipThreadRunning)
+	while (allThreadsRunning)
 	{
 		history = Sampler_getHistory(&length);
 		double average = Sampler_getAverageReading();
-		int POT = getPOTReading(); // 1.4
+		int POT = getPOTReading();
 		sampleCount = Sampler_getNumSamplesTaken() - sampleCount;
 
 		pthread_mutex_lock(&dip_counter_mutex);
@@ -51,7 +55,7 @@ void *dipCounter(void *arg)
 			if (history[i] < average - THRESHOLD)
 			{
 				dipCount++;
-				// skip  the next readings if they are also below the threshold
+				// skip the next readings if they are also below the threshold
 				while (i < length && history[i] < average - THRESHOLD + HYSTERESIS)
 				{
 					i++;
@@ -61,7 +65,7 @@ void *dipCounter(void *arg)
 			else if (history[i] > average + THRESHOLD)
 			{
 				dipCount++;
-				// skip  the next readings if they are also above the threshold
+				// skip the next readings if they are also above the threshold
 				while (i < length && history[i] > average + THRESHOLD - HYSTERESIS)
 				{
 					i++;
@@ -98,8 +102,7 @@ void *dipCounter(void *arg)
 				}
 			}
 		}
-
-		// resize the buffer (1.4)
+		// resize the buffer
 		if (POT == 0)
 		{
 			Sampler_setHistorySize(1);
@@ -118,24 +121,24 @@ int getDipCount()
 {
 	int cpy;
 	pthread_mutex_lock(&dip_counter_mutex);
-	cpy = dipCount;
+	if (dipCount > MAX_DIPS)
+	{
+		cpy = MAX_DIPS;
+	}
+	else
+	{
+		cpy = dipCount;
+	}
 	pthread_mutex_unlock(&dip_counter_mutex);
 	return cpy;
 }
 
 void startDipCounterThread(pthread_t *thread)
 {
-	if(dipThreadRunning)
-		return;
-
-	dipThreadRunning = true; //this has to be set before the thread is created
-							//because the main loop will check this variable inside the thread
-							
-	pthread_create(thread, NULL, dipCounter, NULL); //this will call the function dipCounter in a new thread
-													//you dont need to call dipCounter() again
+	pthread_create(thread, NULL, dipCounter, NULL); // this will call the function dipCounter in a new thread
 }
 
 void stopDipCounterThread()
 {
-	dipThreadRunning = false;
+	allThreadsRunning = false;
 }

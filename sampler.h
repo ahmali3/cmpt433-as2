@@ -4,7 +4,9 @@
 // length, the average light level, and the number of samples taken.
 #ifndef _SAMPLER_H_
 #define _SAMPLER_H_
+
 #include <pthread.h>
+
 #define A2D_FILE_VOLTAGE0 "/sys/bus/iio/devices/iio:device0/in_voltage0_raw"
 #define A2D_FILE_VOLTAGE1 "/sys/bus/iio/devices/iio:device0/in_voltage1_raw"
 #define A2D_VOLTAGE_REF_V 1.8
