@@ -34,7 +34,6 @@ void printData(double avgLight, double *history, int length, int POTsize, int di
 
 void *dipCounter(void *arg)
 {
-	startDipCounterThread();
 	int length;
 	double *history;
 	long long sampleCount = Sampler_getNumSamplesTaken();
@@ -124,15 +123,16 @@ int getDipCount()
 	return cpy;
 }
 
-void startDipCounterThread()
+void startDipCounterThread(pthread_t *thread)
 {
 	if(dipThreadRunning)
 		return;
-	dipThreadRunning = true;
-	dipCounter(NULL);
-	pthread_t printer;
-	pthread_create(&printer, NULL, dipCounter, NULL);
-	pthread_detach(printer);
+
+	dipThreadRunning = true; //this has to be set before the thread is created
+							//because the main loop will check this variable inside the thread
+							
+	pthread_create(thread, NULL, dipCounter, NULL); //this will call the function dipCounter in a new thread
+													//you dont need to call dipCounter() again
 }
 
 void stopDipCounterThread()

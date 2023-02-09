@@ -245,7 +245,6 @@ void handleCommand(char *command)
 
 void *udpServerThread(void *arg)
 {
-    startUdpThread();
     char buffer[MAX_BUFFER_SIZE];
     char lastCommand[MAX_BUFFER_SIZE];
 
@@ -268,19 +267,15 @@ void *udpServerThread(void *arg)
 }
 
 // Creates a thread that listens for UDP packets.
-void startUdpThread()
+void startUdpThread(pthread_t *thread)
 {
     if(udpThreadRunning)
     {
         return;
     }
-
     setupUdpSocket();
-
     udpThreadRunning = true;
-    pthread_t tid;
-    pthread_create(&tid, NULL, udpServerThread, NULL);
-    pthread_detach(tid);
+    pthread_create(thread, NULL, udpServerThread, NULL);
 }
 
 // Stops the UDP thread currently running.

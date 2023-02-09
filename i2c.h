@@ -14,27 +14,16 @@
 #define TURN_ON "1"
 #define TURN_OFF "0"
 
-#define EXPORT_PATH "/sys/class/gpio/export"
-#define PIN_61_DIRECTION_PATH "/sys/class/gpio/gpio61/direction"
-#define PIN_44_DIRECTION_PATH "/sys/class/gpio/gpio44/direction"
-#define GPIO_OUTPUT "out"
-#define LEFT_DIGIT_PIN 61
-#define RIGHT_DIGIT_PIN 44
-
-int initI2cBus(char *bus, int address);
-
+int initI2cBus(char* bus, int address);
 void writeI2cReg(int i2cFileDesc, unsigned char regAddr, unsigned char value);
 
 // Begins the background thread which displays the digits
-void startDisplayThread(void);
+void startDisplayThread(pthread_t *thread);
 
 // Stops the background thread which displays the digits
 void stopDisplayThread(void);
 
 // Initializes the 14-segment i2c display
 void initDisplay(void);
-
-// Background thread that displays the digits on the 14-segment display
-void *displayDigits(void *arg);
 
 #endif

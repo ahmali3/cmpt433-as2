@@ -45,7 +45,7 @@ void stop(void);
 void handleCommand(char *command);
 
 // Creates a thread that listens for UDP packets.
-void startUdpThread();
+void startUdpThread(pthread_t *thread);
 
 // Stops the UDP thread currently running.
 void stopUdpThread();

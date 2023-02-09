@@ -9,7 +9,7 @@
 // Prints the statistics of the light samples. 
 void printData(double avgLight, double *history, int length, int POTsize, int dips);
 
-void startDipCounterThread();
+void startDipCounterThread(pthread_t *thread);
 
 void stopDipCounterThread();
 
